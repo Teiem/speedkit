@@ -56,7 +56,6 @@ const preComputeColors = () => {
 
   for (let i = 0; i < MAX_ITERATIONS - 1; i++) {
     const t = easeOut3(i / (MAX_ITERATIONS - 2));
-    console.log("t", i, t);
 
     colors[i] = (
       (Math.floor(START_R + DIFF_R * t) & 0xFF) |
@@ -72,7 +71,7 @@ const preComputeColors = () => {
 
 const COLORS = preComputeColors();
 
-const render = async (frameId: number) => {
+const render = async () => {
   let currentY = 0;
   const step = Math.ceil(height / workers.length / 8);
 
@@ -82,7 +81,7 @@ const render = async (frameId: number) => {
       const yEnd = Math.min(currentY + step, height);
       currentY += step;
 
-      await queWorker(worker, yStart, yEnd, frameId);
+      await queWorker(worker, yStart, yEnd);
     }
   }));
 
@@ -103,7 +102,7 @@ const render = async (frameId: number) => {
   ctx.restore();
 };
 
-const queWorker = async (worker: Worker, yStart: number, yEnd: number, frameId: number): Promise<void> => new Promise((resolve) => {
+const queWorker = async (worker: Worker, yStart: number, yEnd: number): Promise<void> => new Promise((resolve) => {
   worker.addEventListener('message', () => resolve(), { once: true });
 
   worker.postMessage({
@@ -116,21 +115,17 @@ const queWorker = async (worker: Worker, yStart: number, yEnd: number, frameId: 
     aspectRatio,
     SABView: SABView32,
     COLORS: COLORS,
-    frameId,
   });
 });
 
-let frameId = 0;
 let renderIsQueued = false;
 export const queRender = () => {
   if (renderIsQueued) return;
   renderIsQueued = true;
 
   requestAnimationFrame(async () => {
-    frameId++;
-    console.log("starting render", frameId);
     const startTime = performance.now();
-    await render(frameId);
+    await render();
     const endTime = performance.now();
     console.log(`Rendering took ${endTime - startTime} milliseconds`);
 
